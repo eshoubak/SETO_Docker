@@ -16,10 +16,10 @@ password = "seto_db_pwd"
 port = "5488"
 
 #Upload the files for the transversion of OpenDSS to Matlab and vice versa
-af.uploadTransversionFiles(host_address, username, password, port, "setomatlabdb")
+af.uploadTransversionFiles(host_address, username, password, port, "setocomparisondb")
 # Connect to the databases
 conn_matlab, cursor_matlab = af.connectToDatabase(host_address, username, password, port, "setomatlabdb")
-conn_opendss, cursor_opendss = af.connectToDatabase(host_address, username, password, port, "setoopendsdb")
+conn_opendss, cursor_opendss = af.connectToDatabase(host_address, username, password, port, "setoopendssdb")
 conn_comparison, cursor_comparison = af.connectToDatabase(host_address, username, password, port, "setocomparisondb")
 
 ### Fetch tables

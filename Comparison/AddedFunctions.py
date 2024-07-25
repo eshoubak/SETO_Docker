@@ -2,6 +2,7 @@
 import psycopg2 as pg
 import pandas as pd
 from sqlalchemy import create_engine
+import os
 
 def uploadTransversionFiles(host_address, username, password, port, db_name):
     #Upload the files for the transversion of OpenDSS to Matlab and vice versa
@@ -9,6 +10,7 @@ def uploadTransversionFiles(host_address, username, password, port, db_name):
     #Take care of the order of the files as they are hardcoded
     
     engine = create_engine('postgresql://'+username+':'+password+'@'+host_address+':'+port+'/'+db_name)
+    print("Working directory:", os.getcwd())
     df = pd.read_csv('DER_Bus_Data.csv')
     df.to_sql('busname_busnumber', engine, if_exists='replace')
     df = pd.read_csv('Loadinfo.csv')
