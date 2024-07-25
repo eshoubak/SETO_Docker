@@ -8,8 +8,6 @@ import pandas as pd
 import numpy as np
 import AddedFunctions as af
 
-af.uploadTransversionFiles()
-
 ### Set up databases
 # Connection variables
 host_address ="192.168.1.90"
@@ -17,40 +15,16 @@ username = "seto_db_user"
 password = "seto_db_pwd"
 port = "5488"
 
-# Connect to the Matlab database
-db_name = "setomatlabdb"
-conn_string = ("host=" + host_address + " port=" + port + " dbname=" + db_name + " user=" + username + " password=" + password)
-print("Connecting to database\n	->%s" % (conn_string))
-conn_matlab = pg.connect(conn_string)
-cursor_matlab = conn_matlab.cursor()
-print("Connected to Matlab database!\n")
-
-# Connect to the OpenDSS database
-db_name = "setoopendssdb"
-conn_string = ("host=" + host_address + " port=" + port + " dbname=" + db_name + " user=" + username + " password=" + password)
-print("Connecting to database\n	->%s" % (conn_string))
-conn_opendss = pg.connect(conn_string)
-cursor_opendss = conn_opendss.cursor()
-print("Connected to OpenDSS database!\n")
-
-# Connect to the result database
-db_name = "setocomparisondb"
-conn_string = ("host=" + host_address + " port=" + port + " dbname=" + db_name + " user=" + username + " password=" + password)
-print("Connecting to database\n	->%s" % (conn_string))
-conn_comparison = pg.connect(conn_string)
-cursor_comparison = conn_comparison.cursor()
-print("Connected to comparison database!\n")
+#Upload the files for the transversion of OpenDSS to Matlab and vice versa
+af.uploadTransversionFiles(host_address, username, password, port, "setomatlabdb")
+# Connect to the databases
+conn_matlab, cursor_matlab = af.connectToDatabase(host_address, username, password, port, "setomatlabdb")
+conn_opendss, cursor_opendss = af.connectToDatabase(host_address, username, password, port, "setoopendsdb")
+conn_comparison, cursor_comparison = af.connectToDatabase(host_address, username, password, port, "setocomparisondb")
 
 ### Fetch tables
-# Fetch table from Matlab
-cursor_matlab.execute("SELECT * FROM result_all")
-rows = cursor_matlab.fetchall()
-df_matlab = pd.DataFrame(rows, columns=[desc[0] for desc in cursor_matlab.description])
+df_matlab = af.fetchTable(cursor_matlab, "result_all")
+df_opendss = af.fetchTable(cursor_opendss, "opendssdata")
+df_loadname_busname = af.fetchTable(cursor_comparison, "loadname_busname")
+df_busname_busnumber = af.fetchTable(cursor_comparison, "busname_busnumber")
 
-# Fetch table from OpenDSS
-#print(cursor_opendss.execute("SELECT * FROM pg_catalog.pg_tables;"))
-cursor_opendss.execute("SELECT * FROM opendssdata")
-rows = cursor_opendss.fetchall()
-df_opendss = pd.DataFrame(rows, columns=[desc[0] for desc in cursor_opendss.description])
-
-# Fetch table from comparison
