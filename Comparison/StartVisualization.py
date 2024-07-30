@@ -33,7 +33,9 @@ af.initializeResultsTable(cursor_comparison, "result")
 #df_matlab = af.fetchTable(cursor_matlab, "result_all")
 #df_opendss = af.fetchTable(cursor_opendss, "opendssdata")
 df_loadname_busname = af.fetchTable(cursor_comparison, "loadname_busname")
+print(df_loadname_busname)
 df_busname_busnumber = af.fetchTable(cursor_comparison, "busname_busnumber")
+print(df_busname_busnumber)
 
 ### Set up simulation parameters
 trackSteps = 4
@@ -70,32 +72,52 @@ for i in range(1, timeSteps):
         for index, row in df_opendss.iloc[100:].iterrows():
             try:
                 loadname_phase = row['busname']
-                print(loadname_phase)
+                #print(loadname_phase)
                 phase = loadname_phase[-1]
-                print(phase)
+                #print(phase)
                 loadname = loadname_phase[:-2]
-                print(loadname_phase.upper())
+                #print(loadname_phase.upper())
+                #print(df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()])
                 busname = df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()]['Bus_name'].values[0]
-                print(busname)
-                busnumber = df_busname_busnumber[df_busname_busnumber['f1c1'] == busname]['f1c2'].values[0]
-                print(busnumber)
-                time = row['timestep'] * 60 + row['trackingstep'] * 15
-                print(time)
+                #print(type(int(busname)))
+                #print(type(int(df_busname_busnumber.f1c1.iloc[2398])))
+                #print(df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0])
+                # Print the 2400th row
+                busnumber = df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0]
+                #print(busnumber)
+                #print(type(busnumber))
+                time = (row['timestep'] -1) * 60 + row['trackingstep'] * 15
+                #print(time)
                 P_opendss = row['p']    
-                print(P_opendss)
+                #print(P_opendss)
                 Q_opendss = row['q']
-                print(Q_opendss)
-                P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['P_kw'].values[0] * 1000
-                print(P_matlab)
-                Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['Q_kvar'].values[0] * 1000
-                print(Q_matlab)
+                #print(Q_opendss)
+                
+                #Check which phase the load is connected to
+                if phase.upper() == 'A':
+                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p1_kw'].values[0] * 1000    
+                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q1_kvar'].values[0] * 1000
+                elif phase.upper() == 'B':
+                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p2_kw'].values[0] * 1000
+                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q2_kvar'].values[0] * 1000
+                elif phase.upper() == 'C':
+                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p3_kw'].values[0] * 1000
+                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q3_kvar'].values[0] * 1000
+                else:
+                    print("Error 69")
+                    quit()
+                #print(P_matlab)
+                #print(Q_matlab)
+                type = df_matlab[df_matlab['busnumber'] == busnumber]['type'].values[0]
+                #print(type)
                 P_delta = P_matlab - P_opendss
-                print(P_delta)
+                #print(P_delta)
                 Q_delta = Q_matlab - Q_opendss
-                print(Q_delta)
-                df_result = df_result.append({'BusName': busname, 'LoadName': loadname, 'BusNumber': busnumber, 'Time': time, 'TimeStep': i, 'TrackingStep': k, 'Phase': phase, 'Type': row['type'], 'P_matlab': P_matlab, 'Q_matlab': Q_matlab, 'P_opendss': P_opendss, 'Q_opendss': Q_opendss, 'P_delta': P_delta, 'Q_delta': Q_delta}, ignore_index=True)
+                #print(Q_delta)
+                df_result = df_result.append({'BusName': busname, 'LoadName': loadname, 'BusNumber': busnumber, 'Time': time, 'TimeStep': i, 'TrackingStep': k, 'Phase': phase, 'Type': type, 'P_matlab': P_matlab, 'Q_matlab': Q_matlab, 'P_opendss': P_opendss, 'Q_opendss': Q_opendss, 'P_delta': P_delta, 'Q_delta': Q_delta}, ignore_index=True)
+                print("Data appended for time step", i, "and tracking step", k)
             except:
-                #print("Error 420")
+                print("Error 420")
                 #quit()
                 print("Error in row", index, "loadnumber", loadname_phase, ". Skipping...")
                 time.sleep(10)
