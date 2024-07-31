@@ -31,11 +31,6 @@ def uploadTransversionFiles(host_address, username, password, port, db_name):
             time.sleep(1)
             continue
 
-def initializeResultsTable(cursor, table_name):
-    #Create the table for the results
-    cursor.execute("CREATE TABLE " + table_name + " (BusName INT, LoadName TEXT, BusNumber INT, Time INT, TimeStep INT, TrackingStep INT, Phase TEXT, Type INT, P_matlab FLOAT, Q_matlab FLOAT, P_opendss FLOAT, Q_opendss FLOAT, P_delta FLOAT, Q_delta FLOAT)")
-    print("Table " + table_name + " created successfully!\n")
-
 def connectToDatabase(host_address, username, password, port, db_name):
     #Connect to the database
     conn_string = ("host=" + host_address + " port=" + port + " dbname=" + db_name + " user=" + username + " password=" + password)
@@ -59,16 +54,3 @@ def fetchTable(cursor, table_name):
     rows = cursor.fetchall()
     df = pd.DataFrame(rows, columns=[desc[0] for desc in cursor.description])
     return df
-
-def uploadDataframes(cursor, df, table_name):
-    #Upload the dataframe to the database
-    sio = StringIO()
-    sio.write(df.to_csv(index=None, header=None))  # Write the Pandas DataFrame as a csv to the buffer
-    sio.seek(0)
-    cursor.copy_from(sio, table_name, columns=df.columns, sep=',')
-    
-    #output = StringIO()
-    #df.to_csv(output, sep='\t', header=False, index=False)
-    #output.seek(0)
-    #cursor.copy_from(output, table_name, null="")
-    print("Data uploaded to table " + table_name + " successfully!\n")

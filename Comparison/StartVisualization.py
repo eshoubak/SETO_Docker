@@ -3,6 +3,10 @@
 ### Organization: UNC Charlotte EPIC
 ### Date: 06/10/2024
 
+# Script for postprocessing the results of the OpenDSS and Matlab simulations for visualization
+# The script fetches the results from the databases, compares them and uploads the results to the comparison database
+# Mishmash of two sql libraries, psycopg2 and sqlalchemy, because bugs (or features) in psycopg2
+
 import psycopg2 as pg
 import pandas as pd
 import numpy as np
@@ -10,6 +14,7 @@ import AddedFunctions as af
 import operator as op
 import time
 from io import StringIO
+from sqlalchemy import create_engine
 
 ### Set up databases
 # Connection variables
@@ -18,31 +23,28 @@ username = "seto_db_user"
 password = "seto_db_pwd"
 port = "5488"
 
-#Upload the files for the transversion of OpenDSS to Matlab and vice versa
+#Upload the files for the transition of OpenDSS to Matlab and vice versa
 af.uploadTransversionFiles(host_address, username, password, port, "setocomparisondb")
 
 # Connect to the databases
 conn_matlab, cursor_matlab = af.connectToDatabase(host_address, username, password, port, "setomatlabdb")
 conn_opendss, cursor_opendss = af.connectToDatabase(host_address, username, password, port, "setoopendssdb")
 conn_comparison, cursor_comparison = af.connectToDatabase(host_address, username, password, port, "setocomparisondb")
+engine_comparison = create_engine('postgresql://'+username+':'+password+'@'+host_address+':'+port+'/setocomparisondb')
 
-# Initialize the results table
-af.initializeResultsTable(cursor_comparison, "result")
+# Reset the result table
+engine_comparison.execute("DROP TABLE IF EXISTS result")
 
 ### Fetch tables
-#df_matlab = af.fetchTable(cursor_matlab, "result_all")
-#df_opendss = af.fetchTable(cursor_opendss, "opendssdata")
 df_loadname_busname = af.fetchTable(cursor_comparison, "loadname_busname")
-print(df_loadname_busname)
 df_busname_busnumber = af.fetchTable(cursor_comparison, "busname_busnumber")
-print(df_busname_busnumber)
 
 ### Set up simulation parameters
 trackSteps = 4
 timeSteps = 24
 
-for i in range(1, timeSteps):
-    for k in range (1, trackSteps):
+for i in range(1, timeSteps+1):
+    for k in range (1, trackSteps+1):
         success = False
         trys = 0
         while not success:
@@ -51,76 +53,57 @@ for i in range(1, timeSteps):
                 df_matlab = pd.DataFrame(cursor_matlab.fetchall(), columns=[desc[0] for desc in cursor_matlab.description])
                 cursor_opendss.execute("SELECT * FROM opendssdata WHERE timeStep = " + str(i) + " AND trackingStep = " + str(k))
                 df_opendss = pd.DataFrame(cursor_opendss.fetchall(), columns=[desc[0] for desc in cursor_opendss.description])
-                success = True
-                print("Data loaded for time step", i, "and tracking step", k)
+                #print("Data loaded for time step", i, "and tracking step", k)
             except:
+                print("Could not load data for time step", i, "and tracking step", k, ". Retrying...")
+                continue
+            if df_matlab.empty or df_opendss.empty:
                 trys += 1
                 if trys % 10 == 0:
                     print("Could not load data for time step", i, "and tracking step", k, ". Watiting for Matlab and OpenDSS to finish the next Tracking Step.")
                 time.sleep(1)
-                continue
-        
-        # Fetch the data
-        #df_matlab = pd.DataFrame(cursor_matlab.fetchall(), columns=[desc[0] for desc in cursor_matlab.description])
-        #df_opendss = pd.DataFrame(cursor_opendss.fetchall())
-        #print(df_opendss)
+            else:
+                success = True
 
         # Build the result dataframe
+        df_result = pd.DataFrame(columns=['BusName', 'LoadName', 'BusNumber', 'simTime', 'TimeStep', 'TrackingStep', 'Phase', 'NodeType', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta'])
 
-        df_result = pd.DataFrame(columns=['BusName', 'LoadName', 'BusNumber', 'Time', 'TimeStep', 'TrackingStep', 'Phase', 'Type', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta'])
-        print(df_result)
-        for index, row in df_opendss.iloc[100:].iterrows():
+        err_count = 0
+        for index, row in df_opendss.iterrows():
             try:
-                loadname_phase = row['busname']
-                #print(loadname_phase)
-                phase = loadname_phase[-1]
-                #print(phase)
-                loadname = loadname_phase[:-2]
-                #print(loadname_phase.upper())
-                #print(df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()])
-                busname = df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()]['Bus_name'].values[0]
-                #print(type(int(busname)))
-                #print(type(int(df_busname_busnumber.f1c1.iloc[2398])))
-                #print(df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0])
-                # Print the 2400th row
-                busnumber = df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0]
-                #print(busnumber)
-                #print(type(busnumber))
-                time = (row['timestep'] -1) * 60 + row['trackingstep'] * 15
-                #print(time)
-                P_opendss = row['p']    
-                #print(P_opendss)
-                Q_opendss = row['q']
-                #print(Q_opendss)
+                loadname_phase = str(row['busname'])
+                phase = str(loadname_phase[-1])
+                loadname = str(loadname_phase[:-2])
+                busname = int(df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()]['Bus_name'].values[0])
+                busnumber = int(df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0])
+                simTime = int((row['timestep'] -1) * 60 + row['trackingstep'] * 15)
+                P_opendss = float(row['p'])
+                Q_opendss = float(row['q'])
                 
                 #Check which phase the load is connected to
                 if phase.upper() == 'A':
-                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p1_kw'].values[0] * 1000    
-                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q1_kvar'].values[0] * 1000
+                    P_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['p1_kw'].values[0] * 1000)
+                    Q_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['q1_kvar'].values[0] * 1000)
                 elif phase.upper() == 'B':
-                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p2_kw'].values[0] * 1000
-                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q2_kvar'].values[0] * 1000
+                    P_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['p2_kw'].values[0] * 1000)
+                    Q_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['q2_kvar'].values[0] * 1000)
                 elif phase.upper() == 'C':
-                    P_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['p3_kw'].values[0] * 1000
-                    Q_matlab = df_matlab[df_matlab['busnumber'] == busnumber]['q3_kvar'].values[0] * 1000
+                    P_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['p3_kw'].values[0] * 1000)
+                    Q_matlab = float(df_matlab[df_matlab['busnumber'] == busnumber]['q3_kvar'].values[0] * 1000)
                 else:
                     print("Error 69")
                     quit()
-                #print(P_matlab)
-                #print(Q_matlab)
-                type = df_matlab[df_matlab['busnumber'] == busnumber]['type'].values[0]
-                #print(type)
-                P_delta = P_matlab - P_opendss
-                #print(P_delta)
-                Q_delta = Q_matlab - Q_opendss
-                #print(Q_delta)
-                df_result = df_result.append({'BusName': busname, 'LoadName': loadname, 'BusNumber': busnumber, 'Time': time, 'TimeStep': i, 'TrackingStep': k, 'Phase': phase, 'Type': type, 'P_matlab': P_matlab, 'Q_matlab': Q_matlab, 'P_opendss': P_opendss, 'Q_opendss': Q_opendss, 'P_delta': P_delta, 'Q_delta': Q_delta}, ignore_index=True)
-                print("Data appended for time step", i, "and tracking step", k)
+                NodeType = str(df_matlab[df_matlab['busnumber'] == busnumber]['type'].values[0])
+                P_delta = float(P_matlab - P_opendss)
+                Q_delta = float(Q_matlab - Q_opendss)
+                df_temp = pd.DataFrame([[busname, loadname, busnumber, simTime, i, k, phase, NodeType, P_matlab, Q_matlab, P_opendss, Q_opendss, P_delta, Q_delta]], columns=['BusName', 'LoadName', 'BusNumber', 'simTime', 'TimeStep', 'TrackingStep', 'Phase', 'NodeType', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta'])
+                df_result = pd.concat([df_result, df_temp], ignore_index=True)
+
             except:
-                print("Error 420")
-                #quit()
-                print("Error in row", index, "loadnumber", loadname_phase, ". Skipping...")
-                time.sleep(10)
+                # If you want an error count, uncomment the following lines
+                #err_count += 1
+                #print("Error" + str(err_count))
+                #print("Error 420")
                 continue
 
         df_result.to_csv('result.csv', index=False)
@@ -130,19 +113,14 @@ for i in range(1, timeSteps):
         trys = 0
         while not success:
             try:
-                #cursor_comparison.execute("INSERT INTO comparison VALUES " + str(tuple(df_result.values)))
-                #af.uploadDataframes(cursor_comparison, df_result, "result")
-                sio = StringIO()
-                sio.write(df_result.to_csv(index=False, header=False))
-                sio.seek(0)
-                cursor_comparison.copy_from(sio, 'result', columns=df_result.columns, sep=',')
-                #conn_comparison.commit()
-                #df_result.to_sql('result', conn_comparison, if_exists='append')
-                print("Data uploaded for time step", i, "and tracking step", k)
+                df_result.to_sql('result', engine_comparison, if_exists='append')
                 success = True
             except:
                 trys += 1
                 if trys % 10 == 0:
                     print("Could not upload data for time step", i, "and tracking step", k, ". Retrying...")
                 time.sleep(1)
+                continue
+        
+        print("Data uploaded for time step", i, "and tracking step", k)
  
