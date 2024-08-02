@@ -53,7 +53,6 @@ for i in range(1, timeSteps+1):
                 df_matlab = pd.DataFrame(cursor_matlab.fetchall(), columns=[desc[0] for desc in cursor_matlab.description])
                 cursor_opendss.execute("SELECT * FROM opendssdata WHERE timeStep = " + str(i) + " AND trackingStep = " + str(k))
                 df_opendss = pd.DataFrame(cursor_opendss.fetchall(), columns=[desc[0] for desc in cursor_opendss.description])
-                #df_opendss.to_csv('opendss.csv', index=False)
                 #print("Data loaded for time step", i, "and tracking step", k)
             except:
                 print("Could not load data for time step", i, "and tracking step", k, ". Retrying...")
