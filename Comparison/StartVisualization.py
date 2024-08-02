@@ -24,7 +24,7 @@ password = "seto_db_pwd"
 port = "5488"
 
 #Upload the files for the transition of OpenDSS to Matlab and vice versa
-af.uploadTransversionFiles(host_address, username, password, port, "setocomparisondb")
+af.uploadTransitionFiles(host_address, username, password, port, "setocomparisondb")
 
 # Connect to the databases
 conn_matlab, cursor_matlab = af.connectToDatabase(host_address, username, password, port, "setomatlabdb")
@@ -53,11 +53,12 @@ for i in range(1, timeSteps+1):
                 df_matlab = pd.DataFrame(cursor_matlab.fetchall(), columns=[desc[0] for desc in cursor_matlab.description])
                 cursor_opendss.execute("SELECT * FROM opendssdata WHERE timeStep = " + str(i) + " AND trackingStep = " + str(k))
                 df_opendss = pd.DataFrame(cursor_opendss.fetchall(), columns=[desc[0] for desc in cursor_opendss.description])
+                df_opendss.to_csv('opendss.csv', index=False)
                 #print("Data loaded for time step", i, "and tracking step", k)
             except:
                 print("Could not load data for time step", i, "and tracking step", k, ". Retrying...")
+                time.sleep(1)
                 continue
-            
             if df_matlab.empty or df_opendss.empty:
                 trys += 1
                 if trys % 10 == 0:
@@ -69,6 +70,8 @@ for i in range(1, timeSteps+1):
         # Build the result dataframe
         df_result = pd.DataFrame(columns=['BusName', 'LoadName', 'BusNumber', 'simTime', 'TimeStep', 'TrackingStep', 'Phase', 'NodeType', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta'])
 
+        busnumber = 0
+        busname = 0
         err_count = 0
         for index, row in df_opendss.iterrows():
             try:
@@ -76,6 +79,7 @@ for i in range(1, timeSteps+1):
                 phase = str(loadname_phase[-1])
                 loadname = str(loadname_phase[:-2])
                 busname = int(df_loadname_busname[df_loadname_busname['Load_name'] == loadname_phase.upper()]['Bus_name'].values[0])
+                #print(busname)
                 busnumber = int(df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0])
                 simTime = int((row['timestep'] -1) * 60 + row['trackingstep'] * 15)
                 P_opendss = float(row['p'])
@@ -97,17 +101,19 @@ for i in range(1, timeSteps+1):
                 NodeType = str(df_matlab[df_matlab['busnumber'] == busnumber]['type'].values[0])
                 P_delta = float(P_matlab - P_opendss)
                 Q_delta = float(Q_matlab - Q_opendss)
+                #df_temp.iloc[0:0]
                 df_temp = pd.DataFrame([[busname, loadname, busnumber, simTime, i, k, phase, NodeType, P_matlab, Q_matlab, P_opendss, Q_opendss, P_delta, Q_delta]], columns=['BusName', 'LoadName', 'BusNumber', 'simTime', 'TimeStep', 'TrackingStep', 'Phase', 'NodeType', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta'])
                 df_result = pd.concat([df_result, df_temp], ignore_index=True)
-
             except:
                 # If you want an error count, uncomment the following lines
-                #err_count += 1
-                #print("Error" + str(err_count))
+                err_count += 1
                 #print("Error 420")
+                print("Errorcount", err_count, "Busname", busname, "Busnumber", busnumber)
                 continue
-
+        
         df_result.to_csv('result.csv', index=False)
+        #exit()
+
 
         # Upload the result to the database
         success = False

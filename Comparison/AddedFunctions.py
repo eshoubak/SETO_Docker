@@ -6,12 +6,12 @@ import os
 import time
 from io import StringIO
 
-def uploadTransversionFiles(host_address, username, password, port, db_name):
+def uploadTransitionFiles(host_address, username, password, port, db_name):
     #Upload the files for the transversion of OpenDSS to Matlab and vice versa
     #The files are stored in the same folder
     #Take care of the order of the files as they are hardcoded
     
-    print("Uploading transversion files")
+    print("Uploading transition files")
     success = False
     trys = 0
     while not success:
