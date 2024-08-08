@@ -15,6 +15,8 @@ import operator as op
 import time
 from io import StringIO
 from sqlalchemy import create_engine
+from datetime import time as tm
+from datetime import datetime as dtm
 
 ### Set up databases
 # Connection variables
@@ -42,6 +44,7 @@ df_busname_busnumber = af.fetchTable(cursor_comparison, "busname_busnumber")
 ### Set up simulation parameters
 trackSteps = 4
 timeSteps = 24
+date = dtm.now().date()
 
 for i in range(1, timeSteps+1):
     for k in range (1, trackSteps+1):
@@ -81,6 +84,8 @@ for i in range(1, timeSteps+1):
                 #print(busname)
                 busnumber = int(df_busname_busnumber[df_busname_busnumber['f1c1'] == str(busname)]['f1c2'].values[0])
                 simTime = int((row['timestep'] -1) * 60 + row['trackingstep'] * 15)
+                simTime = dtm.combine(date, tm(simTime // 60, simTime % 60, 0))
+                #simTime = tm(simTime // 60, simTime % 60, 0)
                 P_opendss = float(row['p'])
                 Q_opendss = float(row['q'])
                 
@@ -107,7 +112,7 @@ for i in range(1, timeSteps+1):
                 # If you want an error count, uncomment the following lines
                 err_count += 1
                 #print("Error 420")
-                print("Errorcount", err_count, "Busname", busname, "Busnumber", busnumber)
+                #print("Errorcount", err_count, "Busname", busname, "Busnumber", busnumber)
                 continue
         
         df_result.to_csv('result.csv', index=False)
@@ -129,4 +134,17 @@ for i in range(1, timeSteps+1):
                 continue
         
         print("Data uploaded for time step", i, "and tracking step", k)
+
+# Commit the changes
+conn_comparison.commit()
+
+# Close the connections
+cursor_matlab.close()
+cursor_opendss.close()
+cursor_comparison.close()
+conn_matlab.close()
+conn_opendss.close()
+conn_comparison.close()
+print("All data uploaded successfully!")
+
  
