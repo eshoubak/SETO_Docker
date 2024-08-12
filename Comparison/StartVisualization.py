@@ -115,7 +115,7 @@ for i in range(1, timeSteps+1):
                 #print("Errorcount", err_count, "Busname", busname, "Busnumber", busnumber)
                 continue
         
-        df_result.to_csv('result.csv', index=False)
+        #df_result.to_csv('result.csv', index=False)
         #exit()
 
 
@@ -136,6 +136,7 @@ for i in range(1, timeSteps+1):
         print("Data uploaded for time step", i, "and tracking step", k)
 
 # Commit the changes
+engine_comparison.execute("COMMIT")
 conn_comparison.commit()
 
 # Close the connections
