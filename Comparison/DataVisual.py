@@ -88,41 +88,107 @@ if page == "Dashboard":
         )
 
         kpi1_4.metric(
-            label = "Total Amount of Data",
-            value = df.shape[0],
-            delta = df_current.shape[0]
+            label = "Total Amount of Nodes",
+            value = len(df.BusName.unique()),
+            delta = len(df.BusName.unique()) - len(df_current.BusName.unique()) 
         )
 
         kpi2_1, kpi2_2, kpi2_3, kpi2_4 = st.columns(4)
 
         kpi2_1.metric(
-            label = "Current Nodes",
+            label = "Active Components",
             value = df_current.shape[0]
         )
 
         kpi2_2.metric(
-            label = "PV Nodes",
-            value = df_current[df_current.NodeType == str(1)].shape[0]
+            label = "Diesel Generators",
+            value = df_current[df_current.NodeType == 2].shape[0]
         )
 
         kpi2_3.metric(
-            label = "PQ Nodes",
-            value = df_current[df_current.NodeType == str(2)].shape[0]
+            label = "Loads",
+            value = df_current[df_current.NodeType == 3].shape[0]
         )
 
         kpi2_4.metric(
-            label = "Battery Nodes",
-            value = df_current[df_current.NodeType == str(3)].shape[0]
+            label = "Batterys",
+            value = df_current[df_current.NodeType == 4].shape[0]
         )
         
+        st.subheader("Combined Power of all Diesel Generators")
+
         fig1_1, fig1_2, fig1_3 = st.columns(3)
 
+        df_type1 = df[df.NodeType == 2]
+        df_type1 = df_type1[['simTime', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta']]
+        df_type1 = df_type1.groupby('simTime').sum().reset_index()
+
         with fig1_1:
-            fig1_1 = px.line(df_current, x='BusName', y='P_matlab', title='Matlab Power')
+            fig1_1 = px.line(df_type1, x='simTime', y=['P_matlab', 'Q_matlab'], title='Matlab Power')
             fig1_1.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
             st.plotly_chart(fig1_1)
 
+        with fig1_2:
+            fig1_2 = px.line(df_type1, x='simTime', y=['P_opendss', 'Q_opendss'], title='OpenDSS Power')
+            fig1_2.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig1_2)
 
+        with fig1_3:
+            fig1_3 = px.line(df_type1, x='simTime', y=['P_delta', 'Q_delta'], title='Difference Power')
+            if df_type1.P_delta.abs().max() < 1 and df_type1.Q_delta.abs().max() < 1:
+                fig1_3.update_yaxes(range=[-1, 1])
+            fig1_3.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig1_3)
+
+        st.subheader("Combined Power of all Loads")
+
+        fig2_1, fig2_2, fig2_3 = st.columns(3)
+
+        df_type2 = df[df.NodeType == 3]
+        df_type2 = df_type2[['simTime', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta']]
+        df_type2 = df_type2.groupby('simTime').sum().reset_index()
+        
+        with fig2_1:
+            fig2_1 = px.line(df_type2, x='simTime', y=['P_matlab', 'Q_matlab'], title='Matlab Power')
+            fig2_1.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig2_1)
+
+        with fig2_2:
+            fig2_2 = px.line(df_type2, x='simTime', y=['P_opendss', 'Q_opendss'], title='OpenDSS Power')
+            fig2_2.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig2_2)
+
+        with fig2_3:
+            fig2_3 = px.line(df_type2, x='simTime', y=['P_delta', 'Q_delta'], title='Difference Power')
+            if df_type2.P_delta.abs().max() < 1 and df_type2.Q_delta.abs().max() < 1:
+                fig2_3.update_yaxes(range=[-1, 1])
+            fig2_3.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig2_3)
+
+        st.subheader("Combined Power of all Batteries")
+
+        fig3_1, fig3_2, fig3_3 = st.columns(3)
+
+        df_type3 = df[df.NodeType == 4]
+        df_type3 = df_type3[['simTime', 'P_matlab', 'Q_matlab', 'P_opendss', 'Q_opendss', 'P_delta', 'Q_delta']]
+        df_type3 = df_type3.groupby('simTime').sum().reset_index()
+
+        with fig3_1:
+            fig3_1 = px.line(df_type3, x='simTime', y=['P_matlab', 'Q_matlab'], title='Matlab Power')
+            fig3_1.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig3_1)
+
+        with fig3_2:
+            fig3_2 = px.line(df_type3, x='simTime', y=['P_opendss', 'Q_opendss'], title='OpenDSS Power')
+            fig3_2.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig3_2)
+
+        with fig3_3:
+            fig3_3 = px.line(df_type3, x='simTime', y=['P_delta', 'Q_delta'], title='Difference Power')
+            if df_type3.P_delta.abs().max() < 1 and df_type3.Q_delta.abs().max() < 1:
+                fig3_3.update_yaxes(range=[-1, 1])
+            fig3_3.update_layout(yaxis_title='Power [W]', xaxis_title='Node')
+            st.plotly_chart(fig3_3)
 
 
 
@@ -179,7 +245,6 @@ if page == "Node Comparison":
         dropdown_node = st.selectbox(
             "Select a node",
             dropdown_node_list
-#            df_data[selected_col].unique().tolist()
         )
         df_data = df_data[(df_data[selected_col] == dropdown_node)]
 
@@ -187,7 +252,6 @@ if page == "Node Comparison":
         dropdown_phase = st.selectbox(
             "Select a phase",
             df_data.Phase.unique().tolist()
-            #df[df[selected_col] == dropdown_node].Phase.unique().tolist()
         )
 
         df_data = df_data[(df.Phase == dropdown_phase)]
@@ -195,8 +259,6 @@ if page == "Node Comparison":
         ### Plots
         fig_col1, fig_col2, fig_col3 = st.columns(3)
         
-        #df_data = df[(df[selected_col] == dropdown_node) & (df.Phase == dropdown_phase)]
-
         # Left plot
         with fig_col1:
             fig_col1 = px.line(df_data, x='simTime', y=['P_matlab', 'Q_matlab'], title='Matlab Values')
@@ -212,6 +274,8 @@ if page == "Node Comparison":
         # Right plot
         with fig_col3:
             fig_col3 = px.line(df_data, x='simTime', y=['P_delta', 'Q_delta'], title='Difference Values')
+            if df_data.P_delta.abs().max() < 1 and df_data.Q_delta.abs().max() < 1:
+                fig_col3.update_yaxes(range=[-1, 1])
             fig_col3.update_layout(yaxis_title='Power [kW, kVar]', xaxis_title='Time')
             st.plotly_chart(fig_col3)
 
