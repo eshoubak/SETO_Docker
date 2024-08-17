@@ -17,12 +17,12 @@ def uploadTransitionFiles(host_address, username, password, port, db_name):
     while not success:
         try:
             engine = create_engine('postgresql://'+username+':'+password+'@'+host_address+':'+port+'/'+db_name)
-            #print("Working directory:", os.getcwd())
-            df = pd.read_csv('DER_Bus_Data.csv')
+            print("Working directory:", os.getcwd())
+            df = pd.read_csv('TransitionFiles/DER_Bus_Data.csv')
             df.to_sql('busname_busnumber', engine, if_exists='replace')
-            df = pd.read_csv('Loadinfo.csv')
+            df = pd.read_csv('TransitionFiles/Loadinfo.csv')
             df.to_sql('loadname_busname', engine, if_exists='replace')
-            print("Successfully uploaded transversion files!\n")
+            print("Successfully uploaded conversion files!\n")
             success = True
         except:
             trys += 1
