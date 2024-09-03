@@ -195,7 +195,7 @@ for i in range(1, timeSteps+1):
         #print("Errorcount", err_count)
         #exit()
 
-        df_result.to_csv('result.csv', index=False)
+        #df_result.to_csv('result.csv', index=False)
         #exit()
 
 
