@@ -26,7 +26,7 @@ services:
     ports:
       - "${DB_PORT}:5432"
     environment:
-      POSTGRES_MULTIPLE_DATABASES: ${DB_NAMES}
+      POSTGRES_MULTIPLE_DATABASES: setomatlabdb,setoopendssdb,setocomparisondb #${DB_NAMES}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
 
@@ -44,7 +44,7 @@ services:
       POSTGRES_USER: ${GF_DB_USER}
       POSTGRES_PASSWORD: ${GF_DB_PASSWORD}
     volumes:
-      - gf_db:/var/lib/postgresql/data
+      - gf_db:/var/lib/postgresql/data #Store the database on the host
 
   seto_gf:
     image: grafana/grafana:latest
